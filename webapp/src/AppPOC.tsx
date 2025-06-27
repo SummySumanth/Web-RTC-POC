@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { io } from "socket.io-client";
 import usePeerConnection from './hooks/usePeerConnection';
 import './App.css'
+import { debounce } from 'lodash';
 
 const socket = io('http://localhost:3000')
 
@@ -58,15 +59,15 @@ function App() {
 
 
 
-  // const {
-  //   initializePeerConnection,
-  //   createOffer,
-  //   createAnswer,
-  //   setRemoteDescription,
-  //   localSDP,
-  //   remoteSDP, 
-  //   setRemoteSDP,
-  // } = usePeerConnection();
+  const {
+    initializePeerConnection,
+    createOffer,
+    createAnswer,
+    setRemoteDescription,
+    localSDP,
+    remoteSDP,
+    setRemoteSDP,
+  } = usePeerConnection();
 
   const [offer, setOffer] = useState<any>();
   const [answer, setAnswer] = useState<any>();
@@ -107,6 +108,16 @@ function App() {
   const setRemoteDescription = (data) => {
     peerConnection.setRemoteDescription(data)
   }
+
+  const handleSetRemoteDescription = debounce((value) => {
+    try {
+      const parsedValue = JSON.parse(value);
+      setRemoteDescription(parsedValue);
+      console.log('Remote description set successfully:', parsedValue);
+    } catch (error) {
+      console.error('Invalid SDP format:', error);
+    }
+  }, 300);
 
 
   return (

@@ -2,7 +2,7 @@ import React from 'react';
 
 function GameStarted() {
     return (
-        <div>Game Started</div>
+        <h1> 🚀 Game Started !!!!!</h1>
     );
 }
 

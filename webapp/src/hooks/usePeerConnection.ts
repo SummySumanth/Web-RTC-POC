@@ -1,81 +1,109 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { styledLogs } from "../utils/utils";
 
 function usePeerConnection() {
-  const [peerConnection, setPeerConnection] =
-    useState<RTCPeerConnection | null>(null);
-  const [localSDP, setLocalSDP] = useState("");
-  const [remoteSDP, setRemoteSDP] = useState("");
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
     // Cleanup the PeerConnection on unmount
     return () => {
-      if (peerConnection) {
-        peerConnection.close();
-        console.log("PeerConnection closed");
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        styledLogs({
+          loggerType: "webrtc",
+          message: "🛑 PeerConnection closed",
+        });
       }
     };
-  }, [peerConnection]);
+  }, []);
 
   const initializePeerConnection = () => {
-    const pc = new RTCPeerConnection({
+    const peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceTransportPolicy: "all",
     });
+    peerConnectionRef.current = peerConnection;
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log("New ICE candidate:", event.candidate);
-      }
-    };
-
-    setPeerConnection(pc);
-    console.log("PeerConnection initialized");
+    peerConnectionRef.current = peerConnection;
+    styledLogs({ loggerType: "webrtc", message: "✨ PeerConnection created" });
   };
 
   const createOffer = async () => {
-    if (!peerConnection) {
-      console.error("PeerConnection is not initialized");
+    styledLogs({ loggerType: "webrtc", message: "🕊️ Creating offer" });
+    if (!peerConnectionRef.current) {
+      styledLogs({
+        loggerType: "error",
+        message: "🔴 PeerConnection is not initialized",
+      });
       return;
     }
 
-    try {
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      setLocalSDP(JSON.stringify(offer));
-      console.log("Offer created and set as local description:", offer);
-    } catch (error) {
-      console.error("Error creating offer:", error);
-    }
+    return peerConnectionRef.current
+      ?.createOffer()
+      .then((offer) => {
+        return peerConnectionRef.current
+          ?.setLocalDescription(offer)
+          .then(() => {
+            styledLogs({
+              loggerType: "webrtc",
+              message: `🟢 Offer created and set as local description`,
+            });
+            return offer;
+          });
+      })
+      .catch((error) => {
+        console.error("Error creating offer:", error);
+      });
   };
 
   const createAnswer = async () => {
-    if (!peerConnection) {
+    console.log("Creating answer...");
+    if (!peerConnectionRef.current) {
       console.error("PeerConnection is not initialized");
       return;
     }
 
-    try {
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-      setLocalSDP(JSON.stringify(answer));
-      console.log("Answer created and set as local description:", answer);
-    } catch (error) {
-      console.error("Error creating answer:", error);
+    if (peerConnectionRef.current.localDescription) {
+      console.log("Answer already created. Skipping duplicate call.");
+      return peerConnectionRef.current.localDescription;
     }
+
+    return peerConnectionRef.current
+      ?.createAnswer()
+      .then((answer) => {
+        peerConnectionRef.current?.setLocalDescription(answer).then(() => {
+          console.log("Answer created and set as local description:", answer);
+        });
+        return answer;
+      })
+      .catch((error) => {
+        console.error("Error creating answer:", error);
+      });
   };
 
-  const setRemoteDescription = async (sdp: string) => {
-    if (!peerConnection) {
+  const setRemoteDescription = async (remoteDescription) => {
+    if (!peerConnectionRef.current) {
       console.error("PeerConnection is not initialized");
       return;
     }
 
-    try {
-      const remoteDescription = new RTCSessionDescription(JSON.parse(sdp));
-      await peerConnection.setRemoteDescription(remoteDescription);
-      console.log("Remote description set successfully:", remoteDescription);
-    } catch (error) {
-      console.error("Error setting remote description:", error);
+    if (
+      peerConnectionRef.current.remoteDescription &&
+      peerConnectionRef.current.remoteDescription.sdp === remoteDescription.sdp
+    ) {
+      console.log("Remote description already set. Skipping duplicate call.");
+      return;
     }
+
+    return peerConnectionRef.current
+      .setRemoteDescription(remoteDescription)
+      .then(() => {
+        console.log("Remote description set successfully:", remoteDescription);
+        return remoteDescription;
+      })
+      .catch((error) => {
+        console.error("Error setting remote description:", error);
+      });
   };
 
   return {
@@ -83,9 +111,7 @@ function usePeerConnection() {
     createOffer,
     createAnswer,
     setRemoteDescription,
-    localSDP,
-    remoteSDP,
-    setRemoteSDP,
+    peerConnectionRef,
   };
 }
 

@@ -1,8 +1,10 @@
 import React from 'react';
 
-function EnteredRoom() {
+function EnteredRoom({ roomName }: { roomName: string }) {
     return (
-        <div>Entered Room</div>
+        <div>
+            <h1>Entered Room: {roomName}</h1>
+        </div>
     );
 }
 

@@ -1,3 +1,9 @@
 {
-  "cSpell.words": ["ACTIONTYPES", "APPSTAGE", "APPSTATE"]
+  "cSpell.words": ["ACTIONTYPES", "APPSTAGE", "APPSTATE", "webrtc"],
+  "editor.fontFamily": "Fira Code, Menlo, Monaco, 'Courier New', monospace",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 14,
+  "editor.lineHeight": 22,
+  "editor.cursorSmoothCaretAnimation": "on",
+  "workbench.editor.showTabs": "multiple"
 }

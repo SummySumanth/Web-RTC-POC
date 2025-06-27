@@ -11,12 +11,29 @@ const io = new Server({
 
 const rooms = {};
 
+const startGame = (socket, roomID) => {
+  console.log(`Game is starting in room: ${roomID}`);
+  socket.to(roomID).emit("startGame", rooms[roomID]);
+
+  rooms[roomID].gameData.status = "playing";
+  rooms[roomID].gameData.gameStarted = true;
+};
+
+const triggerWebRtcOffer = (roomID) => {
+  console.log(`Triggering WebRTC offer in room: ${roomID}`);
+
+  io.to(rooms[roomID][0].id).emit("triggerWebRtcOffer");
+};
+
 const joinRoom = (socket, roomID, rooms, callback) => {
   // Check if the room exists
   if (!rooms[roomID]) {
     rooms[roomID] = [];
     console.log(`✨ Room ${roomID} does not exist. Created a new room`);
-    rooms[roomID].push(socket.id);
+    rooms[roomID].push({
+      id: socket.id,
+      userName: socket.userName,
+    });
     socket.join(roomID);
     socket.roomID = roomID;
     console.log("UPDATED ROOMS:", rooms);
@@ -47,7 +64,10 @@ const joinRoom = (socket, roomID, rooms, callback) => {
       // that a new user has joined
       // and send the user a message that they have joined the room
       socket.join(roomID);
-      rooms[roomID].push(socket.id);
+      rooms[roomID].push({
+        id: socket.id,
+        userName: socket.userName,
+      });
       socket.roomID = roomID;
       console.log(`User ${socket.id} joined room: ${roomID}`);
       socket.to(roomID).emit("message", "A new user has joined the room");
@@ -56,11 +76,14 @@ const joinRoom = (socket, roomID, rooms, callback) => {
         success: true,
         message: `You have joined room "${roomID}"`,
       });
+      // Trigger WebRTC Procedure on the client side of first user
+
+      triggerWebRtcOffer(socket.roomID);
     }
   }
   // Emit a deep copy of rooms to avoid reference issues
-  console.log("Emitting rooms status:", JSON.parse(JSON.stringify(rooms)));
-  socket.emit("roomsStatus", JSON.parse(JSON.stringify(rooms)));
+  console.log("Emitting rooms status:", rooms);
+  socket.emit("roomsStatus", rooms);
 };
 
 const getRoomsStatus = () => {
@@ -79,7 +102,7 @@ io.on("connection", (socket) => {
     const roomID = socket.roomID;
     if (roomID) {
       console.log(`User ${socket.id} left room: ${roomID}`);
-      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
+      rooms[roomID] = rooms[roomID].filter((user) => user.id !== socket.id);
       socket.to(roomID).emit("message", "A user has left the room");
       console.log(`Room ${roomID} now has users: ${rooms[roomID]}`);
     }
@@ -104,6 +127,85 @@ io.on("connection", (socket) => {
     joinRoom(socket, roomID, rooms, callback);
     getRoomsStatus();
   });
+
+  socket.on("login", (userName, callback) => {
+    socket.userName = userName;
+    console.log(`User ${socket.id} logged in as ${userName}`);
+    callback({
+      success: true,
+      message: `You are logged in as ${userName}`,
+    });
+    // Emit a deep copy of rooms to avoid reference issues
+    console.log("Emitting rooms status:", JSON.stringify(rooms));
+    socket.emit("roomsStatus", JSON.stringify(rooms));
+  });
+
+  socket.on("sendOffer", (offer, callback) => {
+    console.log(`User ${socket.id} is sending offer to room: ${socket.roomID}`);
+    socket.offer = offer;
+    console.log("Offer:", offer);
+    socket.to(socket.roomID).emit("offer", offer);
+    callback({
+      success: true,
+      message: `Offer sent to room ${socket.roomID}`,
+    });
+  });
+
+  socket.on("sendAnswer", (answer, callback) => {
+    console.log(
+      `User ${socket.id} is sending answer to room: ${socket.roomID}`
+    );
+    socket.to(socket.roomID).emit("answer", answer);
+    callback({
+      success: true,
+      message: `Answer sent to room ${socket.roomID}`,
+    });
+  });
+
+  socket.on("sendIceCandidate", (iceCandidate, callback) => {
+    console.log(
+      `User ${socket.id} is sending iceCandidate to room: ${socket.roomID}`
+    );
+    socket.to(socket.roomID).emit("iceCandidate", iceCandidate);
+    callback({
+      success: true,
+      message: `IceCandidate sent to room ${socket.roomID}`,
+    });
+  });
+
+  socket.on("data_channel_info", (dataChannelLabel, callback) => {
+    console.log("datachannel info received: ", dataChannelLabel);
+    socket.to(socket.roomID).emit("data_channel_available", dataChannelLabel);
+    callback({
+      success: true,
+      message: `Data channel available emit sent with label ${dataChannelLabel}`,
+    });
+  });
+
+  socket.on("identifyMyself", (callback) => {
+    console.log(`User ${socket.id} is identifying themselves`);
+    callback({
+      success: true,
+      message: `ID-${socket.id} Name-${socket.userName}`,
+    });
+  });
 });
 
 io.listen(3000);
+
+// gameData: {
+//   status: "waiting",
+//   gameStarted: false,
+//   gameData: null,
+//   gameID: null,
+//   gameType: null,
+//   gameStartedAt: null,
+//   gameEndedAt: null,
+//   gameDuration: null,
+//   gameResult: null,
+//   gameWinner: null,
+//   gameLoser: null,
+//   gameScore: null,
+//   gameHistory: [],
+//   gameHistoryLimit: 10,
+// },
