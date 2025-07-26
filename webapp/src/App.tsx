@@ -69,38 +69,39 @@ function App() {
 
   const handleIceCandidateGeneration = (event: RTCPeerConnectionIceEvent) => {
     if (event.candidate) {
-      console.log('ICE candidate generated:', event.candidate);
+      styledLogs({ loggerType: "webrtc", message: `🧊 ICE candidate generated` });
+      styledLogs({ loggerType: "socket", message: "⬆️ EMIT ICE CANDIDATE" });
       socket.emit('sendIceCandidate', event.candidate, (response: { success: boolean; message: string }) => {
         if (response.success) {
-          console.log('ICE candidate sent successfully');
+          styledLogs({ loggerType: "socket", message: "🟢 ICE candidate sent successfully" });
         } else {
-          console.error('Failed to send ICE candidate:', response.message);
+          styledLogs({ loggerType: "socket", message: `⚠️ Failed to send ICE candidate: ${response.message}` });
         }
       });
     } else {
-      console.log('All ICE candidates have been generated');
+      styledLogs({ loggerType: "webrtc", message: "🧊 All ICE candidates have been generated !" });
     }
   }
 
   useEffect(() => {
 
     if (peerConnectionRef && peerConnectionRef.current) {
-      styledLogs({ loggerType: "webrtc", message: "👂🏻 Have set up event listeners on PeerConnection" });
+      styledLogs({ loggerType: "webrtc", message: "👂🏻 Event listeners Added on PeerConnection" });
       peerConnectionRef.current.onconnectionstatechange = (event) => {
-        console.log('🔴🔴🔴🔴🔴🔴 Connection state changed:', event);
+        styledLogs({ loggerType: "webrtc", message: `🔴 Connection state changed: ${event.currentTarget.connectionState}` });
       }
       peerConnectionRef.current.onicecandidate = (event) => {
-        console.log('🧊🧊🧊🧊!!! ICE CANDIDATE RECEIVED#####');
+        styledLogs({ loggerType: "webrtc", message: "🧊 ICE CANDIDATE RECEIVED ⬇️" });
         handleIceCandidateGeneration(event);
       };
-      peerConnectionRef.current.onicegatheringstatechange = () => {
-        console.log('🥶🥶🥶🥶🥶 ICE CANDIDATE GATHERING STATE CHANGE')
+      peerConnectionRef.current.onicegatheringstatechange = (event) => {
+        styledLogs({ loggerType: "webrtc", message: `🥶🥶🥶🥶🥶 ICE CANDIDATE GATHERING STATE CHANGE: ${event.currentTarget.iceGatheringState}` });
       }
       peerConnectionRef.current.onicecandidateerror = () => {
-        console.log('⚠️⚠️⚠️⚠️🧊 ice candidate error');
+        styledLogs({ loggerType: "webrtc", message: "⚠️⚠️⚠️⚠️🧊 ice candidate error" });
       };
       peerConnectionRef.current.ondatachannel = (event) => {
-        console.log('📡📡📡📡📡🟢🟢🟢🟢🟢🟢🟢🟢🟢 Data channel created:', event.channel);
+        styledLogs({ loggerType: "webrtc", message: "🟢 Data channel created" });
         dataChannel.current = event.channel;
         setupDataChannelEventListeners();
       }
@@ -108,7 +109,7 @@ function App() {
 
     return () => {
       if (peerConnectionRef.current) {
-        console.log('REMOVING PEER CONNECTION EVENT LISTENERS')
+        styledLogs({ loggerType: "webrtc", message: "🔴 Removing Peer Connection Event Listeners" });
         peerConnectionRef.current.onicecandidate = null;
         peerConnectionRef.current.ontrack = null;
         peerConnectionRef.current.onconnectionstatechange = null;
@@ -129,18 +130,24 @@ function App() {
     styledLogs({ loggerType: "webrtc", message: "👂🏻 Setting up Data channel event listeners" });
     if (dataChannel.current) {
       dataChannel.current.onopen = () => {
-        styledLogs({ loggerType: "webrtc", message: "🟢 Data channel opened" });
+        styledLogs({ loggerType: "webrtc", message: "✔️ Data channel opened" });
         startGame();
       }
       dataChannel.current.onclose = () => {
-        styledLogs({ loggerType: "webrtc", message: "🔴 Data channel closed" });
+        styledLogs({ loggerType: "webrtc", message: "⚠️ Data channel closed" });
         closeDataChannel();
       }
       dataChannel.current.onerror = (error) => {
-        styledLogs({ loggerType: "webrtc", message: `🔴 Data channel error: ${error}` });
+        styledLogs({ loggerType: "webrtc", message: `⚠️ Data channel error: ${error}` });
       };
       dataChannel.current.onmessage = (event) => {
-        styledLogs({ loggerType: "webrtc", message: `🟢 Received message: ${event.data}` });
+        const message = JSON.parse(event.data);
+        const readableTimestamp = new Date(message.timestamp).toLocaleString();
+        console.group('📡 Message Received Over Data Channel');
+        console.log(`%cFrom: %c ${message.userName}`, "background: #0d3363; color: white; padding: 4px; border: 1px solid #0053b8;", "background: #0073ff; color: white; padding: 4px; border: 1px solid #0053b8; font-weight: bold;");
+        console.log(`%cMessage: %c ${message.message}`, "background: #0d3363; color: white; padding: 4px; border: 1px solid #0053b8;", "background: #0073ff; color: white; padding: 4px; border: 1px solid #0053b8; font-weight: bold;");
+        console.log(`%cTime: %c ${readableTimestamp}`, "background: #0d3363; color: white; padding: 4px; border: 1px solid #0053b8;", "background: #0073ff; color: white; padding: 4px; border: 1px solid #0053b8; font-weight: bold;");
+        console.groupEnd();
       };
     }
   }
@@ -155,15 +162,20 @@ function App() {
 
   const sendMessageOnDataChannel = (message: string) => {
     if (dataChannel.current && dataChannel.current.readyState === 'open') {
-      dataChannel.current.send(message);
-      console.log('📡📡📡📡📡 Message sent:', message);
+      const messageToSend = {
+        userName: state.userName,
+        message: message,
+        timestamp: new Date().toISOString()
+      }
+      dataChannel.current.send(JSON.stringify(messageToSend));
+      styledLogs({ loggerType: "webrtc", message: `📡 Message sent: "${message}"` });
     } else {
-      console.error('📡📡📡📡📡 Data channel is not open');
+      styledLogs({ loggerType: "webrtc", message: `⚠️ Data channel is not open` });
     }
   };
 
   const socketConnectHandler = () => {
-    //console.log('Connected to the server');
+    styledLogs({ loggerType: "socket", message: "🔗 Connected to the server" });
     notify('Connected to the server', 'success');
   }
 
@@ -172,13 +184,16 @@ function App() {
   };
 
   const socketRoomStatusHandler = data => {
-    //console.log('Room Status:____', data);
+    console.group('🏠 Room Status:');
+    styledLogs({ loggerType: "socket", message: `🏠 Room Status:` });
+    console.log(data);
+    console.groupEnd();
     notify(`Room Status: ${data}`, 'info');
   };
 
   const socketTriggerWebRtcOfferHandler = () => {
 
-    styledLogs({ loggerType: "webrtc", message: "🚀 Triggering WebRTC offer" });
+    styledLogs({ loggerType: "webrtc", message: "🚀 Initiating WebRTC Procedure" });
 
     dataChannel.current =
       peerConnectionRef?.current?.createDataChannel("dataChannel");
@@ -190,7 +205,7 @@ function App() {
         styledLogs({ loggerType: "socket", message: `⬆️ EMIT OFFER` });
         socket.emit('sendOffer', offer, (response: { success: boolean; message: string }) => {
           if (response.success) {
-            styledLogs({ loggerType: "webrtc", message: "🟢 Offer sent successfully" });
+            styledLogs({ loggerType: "webrtc", message: "✔️ Offer sent successfully" });
           }
         });
       })
@@ -201,16 +216,15 @@ function App() {
   }
 
   const socketOfferHandler = (offer: string) => {
-    //console.log('Received offer:', offer);
+    styledLogs({ loggerType: "socket", message: "🚀 Received offer" });
     setRemoteDescription(offer)
       .then(() => {
         createAnswer()
           .then((answer) => {
-            console.log('Answer created:', answer);
+            styledLogs({ loggerType: "socket", message: "⬆️ EMIT ANSWER" });
             socket.emit('sendAnswer', answer, (response: { success: boolean; message: string }) => {
-              console.log('response is ', response);
               if (response.success) {
-                console.log('Answer sent successfully');
+                styledLogs({ loggerType: "socket", message: "✔️ Answer sent successfully" });
               }
             });
             dispatch({ type: 'appStage', payload: APPSTAGE.WAITING_FOR_PEER_TO_PEER_CONNECTION });
@@ -224,18 +238,17 @@ function App() {
       .catch((error) => {
         console.error("Error setting remote description:", error);
       });
-    //console.log("Setting remote description with offer:", offer);
   }
 
   const socketIceCandidateHandler = (candidate: RTCIceCandidate) => {
-    console.log('🧊⬇️ Received ICE candidate:', candidate);
+    styledLogs({ loggerType: "webrtc", message: "🧊⬇️ Received ICE candidate" });
 
     peerConnectionRef?.current?.addIceCandidate(candidate)
       .then(() => {
-        console.log('🧊✅ ICE candidate added successfully');
+        styledLogs({ loggerType: "webrtc", message: "🟢 Remote ICE candidate added successfully" });
       })
       .catch(error => {
-        console.error('🧊⚠️ Error adding ICE candidate:', error);
+        styledLogs({ loggerType: "webrtc", message: `⚠️ Error adding ICE candidate: ${error}` });
       });
   }
 
@@ -244,10 +257,10 @@ function App() {
   }
 
   const socketAnswerHandler = (answer: string) => {
-    console.log('🚀🚀🚀🚀🚀 socketAnswerHandler answer received')
+    styledLogs({ loggerType: "socket", message: "⬇️ Received answer" });
     setRemoteDescription(answer)
       .then(() => {
-        console.log('Answer set successfully');
+        styledLogs({ loggerType: "socket", message: "🟢 Answer set successfully" });
         dispatch({ type: 'appStage', payload: APPSTAGE.WAITING_FOR_PEER_TO_PEER_CONNECTION });
       })
       .catch((error) => {
@@ -307,6 +320,7 @@ function App() {
 
   useEffect(() => {
     if (state.roomID !== '') {
+      styledLogs({ loggerType: "socket", message: `🔗 Joining room: ${state.roomID}` });
       socket.emit("join", state.roomID, (response: { success: boolean; message: string }) => {
         if (response.success) {
           dispatch({ type: 'appStage', payload: APPSTAGE.ENTERED_ROOM });

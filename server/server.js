@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
-
+import styledLogs from "./utilities/utils.js";
+import chalk from "chalk";
 console.clear();
 
 const io = new Server({
@@ -21,7 +22,15 @@ const startGame = (socket, roomID) => {
 
 const triggerWebRtcOffer = (roomID) => {
   console.log(`Triggering WebRTC offer in room: ${roomID}`);
-
+  console.log(
+    chalk.bgHex("#978d00")(
+      `\n\nEmitting event ${chalk.black(
+        `Trigger Web RTC Procedure`
+      )} \n to the offerer  ${chalk.black(
+        rooms[roomID][0].userName
+      )} \n in room ${chalk.black(roomID)}\n\n`
+    )
+  );
   io.to(rooms[roomID][0].id).emit("triggerWebRtcOffer");
 };
 
@@ -29,24 +38,41 @@ const joinRoom = (socket, roomID, rooms, callback) => {
   // Check if the room exists
   if (!rooms[roomID]) {
     rooms[roomID] = [];
-    console.log(`✨ Room ${roomID} does not exist. Created a new room`);
+    console.log(
+      chalk.bgHex("#005c78")(`Room ${chalk.white(roomID)} does not exist`)
+    );
+    console.log(
+      chalk.white(
+        `✨ New room "${chalk.hex("#00a9dc")(roomID)}" is being created`
+      )
+    );
     rooms[roomID].push({
       id: socket.id,
       userName: socket.userName,
     });
     socket.join(roomID);
     socket.roomID = roomID;
-    console.log("UPDATED ROOMS:", rooms);
-    console.log(`User ${socket.id} created and joined room: ${roomID}`);
+
+    console.group(chalk.bgHex("#005c78").white("🏠 Rooms Status"));
+    console.log(rooms, "\n");
+    console.groupEnd();
+
     socket.to(roomID).emit("message", "A new user has joined the room");
-    console.log(`Room ${roomID} now has users: ${rooms[roomID]}`);
     callback({
       success: true,
       message: `You have created and joined room "${roomID}", `,
     });
   } else {
     // Room exists
-    console.log(`🟢 User ${socket.id} is joining existing room: ${roomID}`);
+    console.log(chalk.bgHex("#00a9dc")(`Room ${chalk.white(roomID)} exist`));
+
+    console.log(
+      chalk.hex("#00a9dc")(
+        `✨ User "${chalk.white(
+          socket.userName
+        )}" is joining existing room "${chalk.white(roomID)}"`
+      )
+    );
     // Check if the room is filled up
     if (rooms[roomID].length >= 2) {
       // Room is full
@@ -69,9 +95,8 @@ const joinRoom = (socket, roomID, rooms, callback) => {
         userName: socket.userName,
       });
       socket.roomID = roomID;
-      console.log(`User ${socket.id} joined room: ${roomID}`);
       socket.to(roomID).emit("message", "A new user has joined the room");
-      console.log(`Room ${roomID} now has users: ${rooms[roomID]}`);
+
       callback({
         success: true,
         message: `You have joined room "${roomID}"`,
@@ -82,18 +107,19 @@ const joinRoom = (socket, roomID, rooms, callback) => {
     }
   }
   // Emit a deep copy of rooms to avoid reference issues
-  console.log("Emitting rooms status:", rooms);
   socket.emit("roomsStatus", rooms);
 };
 
 const getRoomsStatus = () => {
-  console.log("Rooms status:", rooms);
+  console.log("~ 🏠 Rooms status ~");
+  console.log(rooms);
 };
 
 io.on("connection", (socket) => {
   //   console.log("A user connected", socket.id);
 
   // Send Greeting message to the client
+
   socket.emit("message", `Hello from server, your id is ${socket.id}`);
 
   socket.on("disconnect", () => {
@@ -123,27 +149,44 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join", (roomID, callback) => {
-    console.log(`User ${socket.id} is trying to join room: ${roomID}`);
+    console.group(chalk.bgHex("#005c78").white("Room Join Request"));
+    console.log(
+      `User ${chalk.hex("#00a9dc")(
+        socket.id
+      )} is trying to join room: ${chalk.hex("#00a9dc")(roomID)}`
+    );
+    console.groupEnd();
+
     joinRoom(socket, roomID, rooms, callback);
-    getRoomsStatus();
   });
 
   socket.on("login", (userName, callback) => {
     socket.userName = userName;
-    console.log(`User ${socket.id} logged in as ${userName}`);
+    console.group(chalk.bgHex("#087800").white("\n User Logged In"));
+    console.log(`User Name: ${userName}`);
+    console.log(`User ID: ${socket.id}\n`);
+
+    console.groupEnd();
     callback({
       success: true,
       message: `You are logged in as ${userName}`,
     });
     // Emit a deep copy of rooms to avoid reference issues
-    console.log("Emitting rooms status:", JSON.stringify(rooms));
-    socket.emit("roomsStatus", JSON.stringify(rooms));
+    console.group(chalk.bgHex("#005c78").white("Rooms Status"));
+    console.log(rooms);
+    console.groupEnd();
+    // socket.emit("roomsStatus", JSON.stringify(rooms));
   });
 
   socket.on("sendOffer", (offer, callback) => {
-    console.log(`User ${socket.id} is sending offer to room: ${socket.roomID}`);
+    console.log(
+      chalk.bgHex("#978d00")(
+        `User ${chalk.black(
+          socket.userName
+        )} is sending offer to room: ${chalk.black(socket.roomID)} \n`
+      )
+    );
     socket.offer = offer;
-    console.log("Offer:", offer);
     socket.to(socket.roomID).emit("offer", offer);
     callback({
       success: true,
@@ -153,7 +196,11 @@ io.on("connection", (socket) => {
 
   socket.on("sendAnswer", (answer, callback) => {
     console.log(
-      `User ${socket.id} is sending answer to room: ${socket.roomID}`
+      chalk.bgHex("#978d00")(
+        `\n User ${chalk.black(
+          socket.userName
+        )} is sending answer to room: ${chalk.black(socket.roomID)}\n`
+      )
     );
     socket.to(socket.roomID).emit("answer", answer);
     callback({
@@ -164,7 +211,11 @@ io.on("connection", (socket) => {
 
   socket.on("sendIceCandidate", (iceCandidate, callback) => {
     console.log(
-      `User ${socket.id} is sending iceCandidate to room: ${socket.roomID}`
+      chalk.bgHex("#978d00")(
+        `User ${chalk.black(
+          socket.userName
+        )} is sending 🧊 iceCandidate to room: ${chalk.black(socket.roomID)}`
+      )
     );
     socket.to(socket.roomID).emit("iceCandidate", iceCandidate);
     callback({

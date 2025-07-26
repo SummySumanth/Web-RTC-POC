@@ -57,24 +57,35 @@ function usePeerConnection() {
   };
 
   const createAnswer = async () => {
-    console.log("Creating answer...");
+    styledLogs({ loggerType: "webrtc", message: "🕊️ Creating answer" });
     if (!peerConnectionRef.current) {
-      console.error("PeerConnection is not initialized");
+      styledLogs({
+        loggerType: "error",
+        message: "🔴 PeerConnection is not initialized",
+      });
       return;
     }
 
     if (peerConnectionRef.current.localDescription) {
-      console.log("Answer already created. Skipping duplicate call.");
+      styledLogs({
+        loggerType: "webrtc",
+        message: "🔴 Answer already created. Skipping duplicate call.",
+      });
       return peerConnectionRef.current.localDescription;
     }
 
     return peerConnectionRef.current
       ?.createAnswer()
       .then((answer) => {
-        peerConnectionRef.current?.setLocalDescription(answer).then(() => {
-          console.log("Answer created and set as local description:", answer);
-        });
-        return answer;
+        return peerConnectionRef.current
+          ?.setLocalDescription(answer)
+          .then(() => {
+            styledLogs({
+              loggerType: "webrtc",
+              message: "🟢 Answer created and set as local description",
+            });
+            return answer;
+          });
       })
       .catch((error) => {
         console.error("Error creating answer:", error);
@@ -98,7 +109,10 @@ function usePeerConnection() {
     return peerConnectionRef.current
       .setRemoteDescription(remoteDescription)
       .then(() => {
-        console.log("Remote description set successfully:", remoteDescription);
+        styledLogs({
+          loggerType: "webrtc",
+          message: "✔️ Remote description set successfully",
+        });
         return remoteDescription;
       })
       .catch((error) => {

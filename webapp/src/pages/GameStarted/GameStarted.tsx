@@ -2,7 +2,7 @@ import React from 'react';
 
 function GameStarted() {
     return (
-        <h1> 🚀 Game Started !!!!!</h1>
+        <h2> 🚀 Peer 2 Peer Connection Established !!!!!</h2>
     );
 }
 
