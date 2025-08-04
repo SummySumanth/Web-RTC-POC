@@ -1,6 +1,7 @@
 import React from 'react';
 import TextField from '@mui/material/TextField';
 import { useNotification } from '../../contexts/NotificationContext';
+import { Button } from '@mui/material';
 
 
 
@@ -22,7 +23,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     };
 
     return (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', }}>
             <h1>Login</h1>
             <TextField
                 type="text"
@@ -39,7 +40,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     setRoomName(e.target.value);
                 }}
             />
-            <button onClick={() => handleLogin(username, roomName)}>Login</button>
+            <Button onClick={() => handleLogin(username, roomName)}>Login</Button>
         </div>
     )
 }

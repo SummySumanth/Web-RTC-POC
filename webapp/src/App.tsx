@@ -143,6 +143,7 @@ function App() {
       dataChannel.current.onmessage = (event) => {
         const message = JSON.parse(event.data);
         const readableTimestamp = new Date(message.timestamp).toLocaleString();
+        notify(`${message.userName} : ${message.message}`, 'info');
         console.group('📡 Message Received Over Data Channel');
         console.log(`%cFrom: %c ${message.userName}`, "background: #0d3363; color: white; padding: 4px; border: 1px solid #0053b8;", "background: #0073ff; color: white; padding: 4px; border: 1px solid #0053b8; font-weight: bold;");
         console.log(`%cMessage: %c ${message.message}`, "background: #0d3363; color: white; padding: 4px; border: 1px solid #0053b8;", "background: #0073ff; color: white; padding: 4px; border: 1px solid #0053b8; font-weight: bold;");
@@ -366,6 +367,23 @@ function App() {
 
   return (
     <div>
+      {
+        (state.userName && state.roomID) &&
+        <div style={{
+          backgroundColor: '#e2e2e2',
+          padding: '20px',
+          borderRadius: '5px',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+          margin: '20px 0',
+          fontFamily: 'Arial, sans-serif',
+          fontWeight: 'bold',
+        }}>
+          Name: {state.userName}
+          <br />
+          Room: {state.roomID}
+        </div>
+      }
+
       <div style={{
         backgroundColor: '#e2e2e2',
         padding: '20px',
